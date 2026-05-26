@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AA000001AA000001AA000001 /* AppDependencyContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001AA100001AA100001 /* AppDependencyContainer.swift */; };
 		AA000002AA000002AA000002 /* DockBadgeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002AA100002AA100002 /* DockBadgeManager.swift */; };
+		BB000001BB000001BB000001 /* BackgroundSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001BB100001BB100001 /* BackgroundSyncManager.swift */; };
 		AA000003AA000003AA000003 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003AA100003AA100003 /* MainWindowView.swift */; };
 		AA000004AA000004AA000004 /* SidebarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100004AA100004AA100004 /* SidebarViewModel.swift */; };
 		AA000005AA000005AA000005 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005AA100005AA100005 /* SidebarView.swift */; };
@@ -75,6 +76,7 @@
 /* Begin PBXFileReference section */
 		AA100001AA100001AA100001 /* AppDependencyContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencyContainer.swift; sourceTree = "<group>"; };
 		AA100002AA100002AA100002 /* DockBadgeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockBadgeManager.swift; sourceTree = "<group>"; };
+		BB100001BB100001BB100001 /* BackgroundSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSyncManager.swift; sourceTree = "<group>"; };
 		AA100003AA100003AA100003 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		AA100004AA100004AA100004 /* SidebarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarViewModel.swift; sourceTree = "<group>"; };
 		AA100005AA100005AA100005 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -263,6 +265,7 @@
 		8A41BFE974432CCF4273D09A /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				BB100001BB100001BB100001 /* BackgroundSyncManager.swift */,
 				EA444136CA7D0100E8C16C65 /* Database */,
 				6EE55139F51CDE5194E98C21 /* Network */,
 				F4BA4032503AD3826E391524 /* Repositories */,
@@ -516,6 +519,7 @@
 				EC64CC7651A2D7B193290172 /* CGmailApp.swift in Sources */,
 				AA000001AA000001AA000001 /* AppDependencyContainer.swift in Sources */,
 				AA000002AA000002AA000002 /* DockBadgeManager.swift in Sources */,
+				BB000001BB000001BB000001 /* BackgroundSyncManager.swift in Sources */,
 				AA000003AA000003AA000003 /* MainWindowView.swift in Sources */,
 				AA000004AA000004AA000004 /* SidebarViewModel.swift in Sources */,
 				AA000005AA000005AA000005 /* SidebarView.swift in Sources */,

@@ -18,6 +18,19 @@ struct CGmailApp: App {
             MainWindowView()
                 .environmentObject(container)
                 .frame(minWidth: 900, minHeight: 600)
+                .task {
+                    BackgroundSyncManager.shared.configure(container: container)
+                    BackgroundSyncManager.shared.startForegroundSync()
+                    // Initial dock badge
+                    container.refreshDockBadge()
+                    // Watch for unread changes
+                    for await _ in NotificationCenter.default.notifications(named: .unreadCountChanged).map({ _ in () }) {
+                        container.refreshDockBadge()
+                    }
+                }
+                .onDisappear {
+                    BackgroundSyncManager.shared.stopForegroundSync()
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
