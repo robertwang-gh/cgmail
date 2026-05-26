@@ -104,6 +104,9 @@ actor MailRepositoryImpl: MailRepositoryProtocol {
         } else {
             try await fullSync(accountId: accountId, client: client)
         }
+        await MainActor.run {
+            NotificationCenter.default.post(name: .unreadCountChanged, object: nil)
+        }
     }
 
     private func fullSync(accountId: String, client: GmailAPIClient) async throws {
