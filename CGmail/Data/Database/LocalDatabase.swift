@@ -16,7 +16,12 @@ final class LocalDatabase: Sendable {
     }
 
     static func makeInMemory() throws -> DatabasePool {
-        let pool = try DatabasePool(path: ":memory:")
+        // DatabasePool requires WAL mode which is incompatible with pure in-memory
+        // SQLite. Use a unique temp file that is deleted after creation so the pool
+        // gets a fresh, empty database on every call.
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cgmail-test-\(UUID().uuidString).db")
+        let pool = try DatabasePool(path: url.path)
         try DatabaseMigrations.migrate(pool)
         return pool
     }
