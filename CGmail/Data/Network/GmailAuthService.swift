@@ -1,5 +1,4 @@
 import Foundation
-import GoogleSignIn
 import AppKit
 
 @MainActor
@@ -11,45 +10,107 @@ final class GmailAuthService {
         self.accountRepo = accountRepo
     }
 
-    func signIn(presentingWindow: NSWindow) async throws -> Account {
-        let result = try await GIDSignIn.sharedInstance.signIn(
-            withPresenting: presentingWindow,
-            hint: nil,
-            additionalScopes: ["https://www.googleapis.com/auth/gmail.modify"]
-        )
-        let user = result.user
-        guard let profile = user.profile else {
-            throw CGmailError.authExpired
-        }
+    /// Run `otter login google-workspace` to open the browser OAuth flow,
+    /// then `otter gws-token` to get the access token.
+    func signIn() async throws -> Account {
+        // Step 1: Login (opens browser — user completes OAuth consent)
+        try await runOtterLogin()
+
+        // Step 2: Get token
+        let token = try await getOtterToken()
+
+        // Step 3: Fetch user profile from Gmail API
+        let profile = try await fetchUserProfile(accessToken: token)
+
         let account = Account(
-            id: user.userID ?? UUID().uuidString,
-            email: profile.email,
-            displayName: profile.name
+            id: profile.emailAddress,
+            email: profile.emailAddress,
+            displayName: profile.emailAddress
         )
         let tokens = AccountTokens(
-            accessToken: user.accessToken.tokenString,
-            refreshToken: user.refreshToken.tokenString,
-            expiryDate: user.accessToken.expirationDate ?? Date().addingTimeInterval(3600)
+            accessToken: token,
+            refreshToken: "",  // otter handles refresh internally
+            expiryDate: Date().addingTimeInterval(3500)  // ~1 hour
         )
         try await accountRepo.addAccount(account, tokens: tokens)
         return account
     }
 
+    /// Get a fresh access token (otter handles refresh internally).
     func refreshTokenIfNeeded(accountId: String) async throws -> String {
-        let tokens = try await accountRepo.getTokens(accountId: accountId)
-        if !tokens.isExpired { return tokens.accessToken }
-        guard let user = GIDSignIn.sharedInstance.currentUser else {
-            throw CGmailError.authExpired
-        }
-        try await user.refreshTokensIfNeeded()
-        let newToken = user.accessToken.tokenString
-        let newExpiry = user.accessToken.expirationDate ?? Date().addingTimeInterval(3600)
-        let newTokens = AccountTokens(accessToken: newToken, refreshToken: tokens.refreshToken, expiryDate: newExpiry)
-        try await accountRepo.updateTokens(accountId: accountId, tokens: newTokens)
-        return newToken
+        return try await getOtterToken()
     }
 
-    func restorePreviousSignIn() async {
-        try? await GIDSignIn.sharedInstance.restorePreviousSignIn()
+    func getOtterToken() async throws -> String {
+        let result = try await runCommand("/usr/local/bin/otter", arguments: ["gws-token"])
+        let token = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else {
+            throw CGmailError.authExpired
+        }
+        return token
+    }
+
+    private func runOtterLogin() async throws {
+        // otter login opens a browser — it returns when complete or times out
+        _ = try? await runCommand("/usr/local/bin/otter", arguments: ["login", "google-workspace"])
+    }
+
+    private func runCommand(_ path: String, arguments: [String]) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global().async {
+                let process = Process()
+                // Try common otter locations
+                let otterPaths = ["/usr/local/bin/otter", "/opt/homebrew/bin/otter",
+                                  "/usr/bin/otter", (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.local/bin/otter"]
+
+                var execPath = path
+                if !FileManager.default.fileExists(atPath: path) {
+                    execPath = otterPaths.first { FileManager.default.fileExists(atPath: $0) } ?? path
+                }
+
+                process.executableURL = URL(fileURLWithPath: execPath)
+                process.arguments = arguments
+
+                // Pass through PATH so otter can find its dependencies
+                var env = ProcessInfo.processInfo.environment
+                env["PATH"] = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + (env["PATH"] ?? "")
+                process.environment = env
+
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = Pipe()
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? ""
+                    if process.terminationStatus == 0 {
+                        continuation.resume(returning: output)
+                    } else {
+                        continuation.resume(throwing: CGmailError.authExpired)
+                    }
+                } catch {
+                    continuation.resume(throwing: CGmailError.networkUnavailable)
+                }
+            }
+        }
+    }
+
+    private struct GmailProfile: Decodable {
+        let emailAddress: String
+        let messagesTotal: Int?
+        let threadsTotal: Int?
+        let historyId: String?
+    }
+
+    private func fetchUserProfile(accessToken: String) async throws -> GmailProfile {
+        var request = URLRequest(url: URL(string: "https://gmail.googleapis.com/gmail/v1/users/me/profile")!)
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw CGmailError.authExpired
+        }
+        return try JSONDecoder().decode(GmailProfile.self, from: data)
     }
 }
